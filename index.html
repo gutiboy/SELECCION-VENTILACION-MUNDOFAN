@@ -259,6 +259,9 @@ const SIZE_ALIASES = {
   "15/15": ["39/39","380/380"],
 };
 function sizeAliasStr(tamano){ return (SIZE_ALIASES[tamano]||[]).join(' '); }
+function normalizeSearch(str){
+  return (str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
 
 /* ============================================================
    DATOS — ventiladores centrífugos
@@ -380,7 +383,55 @@ const CAJAS = [
    Monofásicos: serie MY2, IE2, patas B3 (ficha AV05411_AV05417)
    Trifásicos: serie MS, IE1, patas B3 (ficha 10045924_6 — Códigos AV05001 a AV05018)
    ============================================================ */
+/* ============================================================
+   DIMENSIONES (mm) — planos de catálogo oficial
+   Ventiladores sueltos: se destacan A (alto/frontal) y C (fondo)
+   Cajas: se destacan D (aspiración) y E (impulsión) del modelo Obra
+   ============================================================ */
+const DIMS_FAN = {
+  Chapa: {
+    "7/7":{A:233,B:225,C:207}, "9/7":{A:233,B:296,C:260}, "9/9":{A:300,B:296,C:260},
+    "10/8":{A:267,B:339,C:288}, "10/10":{A:333,B:339,C:288}, "12/9":{A:311,B:407,C:341},
+    "12/12":{A:396,B:407,C:341}, "15/15":{A:473,B:444,C:403},
+  },
+  Poliamida: {
+    "7/7":{A:230,B:245,C:208}, "9/7":{A:233,B:245,C:260}, "9/9":{A:301,B:245,C:260},
+    "10/8":{A:265,B:350,C:291}, "10/10":{A:329,B:350,C:291}, "12/9":{A:310,B:350,C:"343,5"},
+    "12/12":{A:396,B:350,C:"343,5"}, "15/15":{A:473,B:"210×2",C:404},
+  }
+};
+const DIMS_CAJA_OBRA = {
+  Chapa: {
+    "7/7":{A:420,B:450,C:450,D:257,E:230,F:367,G:373},
+    "9/9":{A:500,B:490,C:490,D:326,E:283,F:436,G:413},
+    "10/10":{A:560,B:525,C:525,D:357,E:312,F:497,G:447},
+    "12/12":{A:625,B:560,C:650,D:416,E:368,F:562,G:572},
+    "15/15":{A:720,B:720,C:720,D:490,E:425,F:660,G:620},
+  },
+  Poliamida: {
+    "7/7":{A:430,B:450,C:450,D:257,E:230,F:367,G:373},
+    "9/9":{A:500,B:490,C:490,D:326,E:283,F:436,G:413},
+    "10/10":{A:560,B:525,C:525,D:357,E:312,F:497,G:447},
+    "12/12":{A:625,B:560,C:650,D:416,E:368,F:562,G:572},
+  }
+};
+const DIMS_CAJA_CIRC = {
+  Chapa: {
+    "7/7":{A:420,B:450,C:450,O:250}, "9/9":{A:500,B:490,C:490,O:350},
+    "10/10":{A:560,B:525,C:525,O:400}, "12/12":{A:625,B:560,C:650,O:450},
+  },
+  Poliamida: {
+    "7/7":{A:430,B:450,C:450,O:257}, "9/9":{A:500,B:490,C:490,O:326},
+    "10/10":{A:560,B:525,C:525,O:357}, "12/12":{A:625,B:560,C:650,O:416},
+  }
+};
+function fanDims(item){ return (DIMS_FAN[item.rodete]||{})[item.tamano] || null; }
+function cajaDimsObra(item){ return (DIMS_CAJA_OBRA[item.rodete]||{})[item.tamano] || null; }
+function cajaDimsCirc(item){ return (DIMS_CAJA_CIRC[item.rodete]||{})[item.tamano] || null; }
+
 const MOTORS = [
+
+
   // ---- MONOFÁSICOS (intensidad nominal a 230V, conexión VΔ) ----
   {codigo:"AV05411", nombre:"Motor monofásico MY2 632-4 · 1/4 CV", voltaje:"Monofásico", tension:"230 V", potCV:0.25, potCVstr:"1/4", potKW:0.18, intNum:0.71, velocidad:"1420 rpm", capacitor:"10 µF", ruido:"67 dB(A)", peso:"5,15 kg", norma:"IE2", tipo:"Patas B3"},
   {codigo:"AV05417", nombre:"Motor monofásico MY2 711-4 · 1/3 CV", voltaje:"Monofásico", tension:"230 V", potCV:0.33, potCVstr:"1/3", potKW:0.25, intNum:0.93, velocidad:"1435 rpm", capacitor:"14 µF", ruido:"67 dB(A)", peso:"6,25 kg", norma:"IE2", tipo:"Patas B3"},
@@ -574,11 +625,25 @@ function renderFilterZone(){
     const list = state.tab==="ventiladores" ? FANS : CAJAS;
     const sizes = sizesFrom(list);
     const buckets = POWER_BUCKETS[state.unit];
+    const isFan = state.tab==="ventiladores";
+    const dimOptions = sizes.map(sz=>{
+      const sample = list.find(f=>f.tamano===sz);
+      if(!sample) return '';
+      if(isFan){
+        const d = fanDims(sample);
+        if(!d) return '';
+        return `<option value="${sz}">A ${d.A} × C ${d.C} mm (${sz})</option>`;
+      } else {
+        const d = cajaDimsObra(sample);
+        if(!d) return '';
+        return `<option value="${sz}">D ${d.D} × E ${d.E} mm (${sz})</option>`;
+      }
+    }).join('');
     filterZone.innerHTML = `
       <div class="filters" style="grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;">
         <div class="field"><label for="fSearch">Buscar código / modelo / equivalencia / tamaño</label>
           <input type="text" id="fSearch" placeholder="Ej: 9/9, 25/25, 240/240, CBM-9/9…">
-          <span class="hint">El tamaño relaciona 7/7 = 19/19 cm = 180/180 mm automáticamente</span></div>
+          <span class="hint">7/7 = 19/19 cm = 180/180 mm · "CBM 77" o "CBM-7/7" encuentran lo mismo</span></div>
         <div class="field"><label for="fRodete">Rodete</label>
           <select id="fRodete"><option value="">Todos</option><option value="Chapa">Chapa</option><option value="Poliamida">Poliamida</option></select></div>
         <div class="field"><label for="fVoltaje">Voltaje</label>
@@ -588,12 +653,14 @@ function renderFilterZone(){
         <div class="field"><label for="fPotencia">Potencia</label>
           <select id="fPotencia"><option value="">Todas</option>${buckets.map(b=>`<option value="${b.value}">${b.label}</option>`).join('')}</select></div>
       </div>
-      <div class="filters" style="grid-template-columns: 1fr 1fr 2fr; margin-top:2px;">
+      <div class="filters" style="grid-template-columns: 1fr 1fr 1fr 1.6fr; margin-top:2px;">
+        <div class="field"><label for="fDimension">Dimensiones (${isFan?'A × C':'D × E'})</label>
+          <select id="fDimension"><option value="">Todas</option>${dimOptions}</select></div>
         <div class="field workpoint"><label for="fCaudalVal">Caudal necesario (m³/h)</label>
           <input type="number" id="fCaudalVal" min="0" placeholder="Ej: 1500"></div>
         <div class="field workpoint"><label for="fPresionVal">Presión de trabajo (mm c.a.)</label>
           <input type="number" id="fPresionVal" min="0" placeholder="Ej: 20"></div>
-        <div class="field"><label>&nbsp;</label><span class="hint" style="margin-top:9px;">Indica el punto de trabajo (caudal, y opcionalmente presión) para obtener una preselección ordenada del equipo más ajustado al más sobrado, validada contra la curva real de catálogo.</span></div>
+        <div class="field"><label>&nbsp;</label><span class="hint" style="margin-top:9px;">Indica el punto de trabajo (caudal, y opcionalmente presión) para obtener una preselección ordenada — los ventiladores de poliamida se muestran primero a igualdad de ajuste.</span></div>
       </div>
       <div class="toolbar-row">
         <div class="pillgroup" id="fabPills">
@@ -611,6 +678,7 @@ function renderFilterZone(){
     document.getElementById('fVoltaje').value = s.voltaje;
     document.getElementById('fTamano').value = s.tamano;
     document.getElementById('fPotencia').value = s.potencia;
+    document.getElementById('fDimension').value = s.tamano;
     document.getElementById('fCaudalVal').value = s.caudalVal;
     document.getElementById('fPresionVal').value = s.presionVal;
     document.querySelectorAll('#fabPills .pill').forEach(p=>{
@@ -620,8 +688,9 @@ function renderFilterZone(){
     document.getElementById('fSearch').addEventListener('input', e=>{ s.search=e.target.value; render(); });
     document.getElementById('fRodete').addEventListener('change', e=>{ s.rodete=e.target.value; render(); });
     document.getElementById('fVoltaje').addEventListener('change', e=>{ s.voltaje=e.target.value; render(); });
-    document.getElementById('fTamano').addEventListener('change', e=>{ s.tamano=e.target.value; render(); });
+    document.getElementById('fTamano').addEventListener('change', e=>{ s.tamano=e.target.value; renderFilterZone(); render(); });
     document.getElementById('fPotencia').addEventListener('change', e=>{ s.potencia=e.target.value; render(); });
+    document.getElementById('fDimension').addEventListener('change', e=>{ s.tamano=e.target.value; renderFilterZone(); render(); });
     document.getElementById('fCaudalVal').addEventListener('input', e=>{ s.caudalVal=e.target.value; render(); });
     document.getElementById('fPresionVal').addEventListener('input', e=>{ s.presionVal=e.target.value; render(); });
     document.querySelectorAll('#fabPills .pill').forEach(pill=>{
@@ -704,7 +773,7 @@ function inBucket(val, bucketStr){
 
 function filterFansOrCajas(list, s){
   const field = powerField();
-  const q = s.search.trim().toLowerCase();
+  const q = normalizeSearch(s.search);
   const qReq = parseFloat(s.caudalVal);
   const pReq = parseFloat(s.presionVal);
   const hasQ = qReq && qReq>0;
@@ -718,7 +787,7 @@ function filterFansOrCajas(list, s){
     if(s.potencia && !inBucket(f[field], s.potencia)) return false;
     if(q){
       const code = f.ve || `${f.obra} ${f.circular}`;
-      const hay = [code, f.modelo, f.tamano, sizeAliasStr(f.tamano), ...f.eq.sp, ...f.eq.sodeca, ...f.eq.casals].join(' ').toLowerCase();
+      const hay = normalizeSearch([code, f.modelo, f.tamano, sizeAliasStr(f.tamano), ...f.eq.sp, ...f.eq.sodeca, ...f.eq.casals].join(' '));
       if(!hay.includes(q)) return false;
     }
     if(hasQ && f.caudalNum < qReq) return false;
@@ -730,7 +799,13 @@ function filterFansOrCajas(list, s){
   });
 
   if(hasQ){
-    out.sort((a,b)=>a.caudalNum-b.caudalNum);
+    // Preselección: ajuste de caudal primero, y dentro de un mismo ajuste, poliamida antes que chapa
+    out.sort((a,b)=>{
+      const matA = a.rodete==='Poliamida' ? 0 : 1;
+      const matB = b.rodete==='Poliamida' ? 0 : 1;
+      if(matA!==matB) return matA-matB;
+      return a.caudalNum-b.caudalNum;
+    });
   }
   return {items:out, qReq: hasQ?qReq:null, pReq: hasP?pReq:null};
 }
@@ -955,6 +1030,34 @@ function curveSection(item){
 
 const BACK_BTN = `<button class="drawer-back" id="detailBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Volver a los resultados</button>`;
 
+function dimensionSection(item, kind){
+  if(kind==="fan"){
+    const d = fanDims(item);
+    if(!d) return '';
+    return `<div class="section-title">Dimensiones (mm)</div>
+      <div class="spec-grid">
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">A (frontal)</div><div class="v">${d.A} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">C (fondo)</div><div class="v">${d.C} mm</div></div>
+        <div class="spec-box" style="grid-column:1/-1;"><div class="k">B (ancho / boca)</div><div class="v">${d.B} mm</div></div>
+      </div>`;
+  } else {
+    const o = cajaDimsObra(item);
+    const c = cajaDimsCirc(item);
+    if(!o) return '';
+    let html = `<div class="section-title">Dimensiones (mm) — modelo Obra</div>
+      <div class="spec-grid">
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">D (aspiración)</div><div class="v">${o.D} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">E (impulsión)</div><div class="v">${o.E} mm</div></div>
+        <div class="spec-box"><div class="k">A · B · C</div><div class="v" style="font-size:12.5px;">${o.A} × ${o.B} × ${o.C} mm</div></div>
+        <div class="spec-box"><div class="k">F · G</div><div class="v" style="font-size:12.5px;">${o.F} × ${o.G} mm</div></div>
+      </div>`;
+    if(c){
+      html += `<div class="curve-caption">Versión Obra circular: A ${c.A} × B ${c.B} × C ${c.C} mm, brida Ø ${c.O} mm.</div>`;
+    }
+    return html;
+  }
+}
+
 function openDetail(kind, code){
   if(kind==="fan" || kind==="caja"){
     const list = kind==="fan" ? FANS : CAJAS;
@@ -997,6 +1100,8 @@ function openDetail(kind, code){
           ${extraSpecs.join('')}
           <div class="spec-box" style="grid-column:1/-1;"><div class="k">Peso</div><div class="v">${item.peso}</div></div>
         </div>
+
+        ${dimensionSection(item, kind)}
 
         ${curveSection(item)}
 
