@@ -1058,11 +1058,11 @@ function dimensionSection(item, kind){
     const d = fanDims(item);
     if(!d) return '';
     const dimImg = item.rodete==="Chapa" ? CURVES.dim_fan_chapa : CURVES.dim_fan_poliamida;
-    return `<div class="section-title">Dimensiones impulsión (mm)</div>
+    return `<div class="section-title">Impulsión A × C (mm)</div>
       <div class="spec-grid">
-        <div class="spec-box" style="border-color:var(--teal);"><div class="k">A (frontal)</div><div class="v">${d.A} mm</div></div>
-        <div class="spec-box" style="border-color:var(--teal);"><div class="k">C (fondo)</div><div class="v">${d.C} mm</div></div>
-        <div class="spec-box" style="grid-column:1/-1;"><div class="k">B (ancho / boca)</div><div class="v">${d.B} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">A (Ancho)</div><div class="v">${d.A} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">C (Alto)</div><div class="v">${d.C} mm</div></div>
+        <div class="spec-box" style="grid-column:1/-1;"><div class="k">B (distancia entre amortiguadores)</div><div class="v">${d.B} mm</div></div>
       </div>
       <div class="curve-box"><img src="${dimImg}" alt="Plano de dimensiones ${item.rodete}"></div>
       <div class="curve-caption">Plano oficial de catálogo con el despiece de cotas A, B y C para toda la serie ${item.rodete==="Chapa"?"BP-RC":"BP-ERP"}.</div>`;
@@ -1072,12 +1072,12 @@ function dimensionSection(item, kind){
     if(!o) return '';
     const dimImgObra = item.rodete==="Chapa" ? CURVES.dim_caja_chapa_obra : CURVES.dim_caja_poliamida_obra;
     const dimImgCirc = item.rodete==="Chapa" ? CURVES.dim_caja_chapa_circular : CURVES.dim_caja_poliamida_circular;
-    let html = `<div class="section-title">Dimensiones impulsión (mm) — modelo Obra</div>
+    let html = `<div class="section-title">Impulsión D × E (mm) — modelo Obra</div>
       <div class="spec-grid">
-        <div class="spec-box" style="border-color:var(--teal);"><div class="k">D (aspiración)</div><div class="v">${o.D} mm</div></div>
-        <div class="spec-box" style="border-color:var(--teal);"><div class="k">E (impulsión)</div><div class="v">${o.E} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">D (Ancho)</div><div class="v">${o.D} mm</div></div>
+        <div class="spec-box" style="border-color:var(--teal);"><div class="k">E (Alto)</div><div class="v">${o.E} mm</div></div>
         <div class="spec-box"><div class="k">A · B · C</div><div class="v" style="font-size:12.5px;">${o.A} × ${o.B} × ${o.C} mm</div></div>
-        <div class="spec-box"><div class="k">F · G</div><div class="v" style="font-size:12.5px;">${o.F} × ${o.G} mm</div></div>
+        <div class="spec-box"><div class="k">Aspiración F × G</div><div class="v" style="font-size:12.5px;">${o.F} × ${o.G} mm</div></div>
       </div>
       <div class="curve-box"><img src="${dimImgObra}" alt="Plano de dimensiones modelo Obra"></div>`;
     if(c && dimImgCirc){
@@ -1219,7 +1219,7 @@ function bindCopy(code, name, btnId){
   const btn = document.getElementById(btnId || 'copyBtn');
   if(!btn) return;
   btn.addEventListener('click', ()=>{
-    navigator.clipboard.writeText(`${code} — ${name}`).then(()=>{
+    navigator.clipboard.writeText(code).then(()=>{
       btn.textContent = '✓ Referencia copiada';
       btn.classList.add('copied');
       setTimeout(()=>{ btn.textContent = `Copiar referencia ${code}`; btn.classList.remove('copied'); }, 1600);
